@@ -2,7 +2,7 @@
 
 The core reads `~/.radare2rc` while starting. You can add `e` commands to this file to tune radare configuration to your taste.
 
-To prevent radare from parsing this file at start, pass it `-n` option. To have a less verbose output for batch mode runs, it is also better to decrease verbosity level with `-v` command-line option.
+To prevent radare from parsing this file at start, pass it `-N` option.
 
 All the configuration of radare is done with the `eval` commands. A typical startup configuration file looks like this:
 
@@ -39,21 +39,28 @@ A simpler alternative to `e` command is accessible from the visual mode. Type `V
 
     Eval spaces:                                                                   
 
-    >  anal                                                                        
-       asm                                                                         
-       scr                                                                         
-       asm                                                                         
-       bin                                                                         
-       cfg                                                                         
-       diff                                                                        
-       dir                                                                         
-       dbg                                                                         
-       cmd                                                                         
-       fs                                                                          
-       hex                                                                         
-       http                                                                        
-       graph                                                                       
-       hud                                                                         
-       scr                                                                         
-       search                                                                      
-       io                                                                          
+    >  anal
+       asm
+       scr
+       asm
+       bin
+       cfg
+       diff
+       dir
+       dbg
+       cmd
+       fs
+       hex
+       http
+       graph
+       hud
+       scr
+       search
+       io
+
+
+For configuration values that can take one of several values, you can use the `=?` operator to get a list
+of valid values:
+
+    [0x00000000]> e scr.nkey =?
+    scr.nkey = fun, hit, flag

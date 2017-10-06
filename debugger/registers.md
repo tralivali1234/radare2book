@@ -1,6 +1,6 @@
 # Registers
 
-The registers are part of user area stored in the context structure used by the scheduler. This structure can be manipulated to get and set values of those registers, and, for example, on Intel hosts, it is possible to directly manipulate DR0-DR7 hardware registers to set hardware breakpoints.
+The registers are part of a user area stored in the context structure used by the scheduler. This structure can be manipulated to get and set the values of those registers, and, for example, on Intel hosts, it is possible to directly manipulate DR0-DR7 hardware registers to set hardware breakpoints.
 
 There are different commands to get values of registers. For the General Purpose ones use:
 
@@ -24,10 +24,10 @@ There are different commands to get values of registers. For the General Purpose
     rip = 0x7f20bf5df630
     rsp = 0x7fff515923c0
 
-    [0x7f0f2dbae630]> dr?rip ; get value of 'eip'
+    [0x7f0f2dbae630]> dr?rip ; get value of 'rip'
     0x7f0f2dbae630
 
-    [0x4A13B8C0]> dr eip = esp   ; set 'eip' as esp
+    [0x4A13B8C0]> dr rip = esp   ; set 'rip' as esp
 
     
 Interaction between a plugin and the core is done by commands returning radare instructions. This is used, for example, to set flags in the core to set  values of registers.

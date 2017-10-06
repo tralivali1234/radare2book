@@ -1,37 +1,50 @@
 # ESIL
 
-ESIL stands for 'Evaluable Strings Intermediate Language'. It aims to describe a Forth-like representation for every target CPU opcode semantics. ESIL representations can be evaluated (interpreted) in order to emulate individual instructions. Each command of an ESIL expression is separated by a comma. Its virtual machine can be described as this:
+ESIL stands for 'Evaluable Strings Intermediate Language'. It aims to describe a [Forth](https://en.wikipedia.org/wiki/Forth_(programming_language))-like representation for every target CPU opcode semantics. ESIL representations can be evaluated (interpreted) in order to emulate individual instructions. Each command of an ESIL expression is separated by a comma. Its virtual machine can be described as this:
 ```
    while ((word=haveCommand())) {
-     if (word.isKeyword()) {
-       esilCommands[word](esil);
+     if (word.isOperator()) {
+       esilOperators[word](esil);
      } else {
        esil.push (word);
      }
      nextCommand();
    }
 ```
-ESIL commands are operations that pop values from the stack, perform calculations and push result (if any) to the stack. The aim is to be able to express most of common operations performed by CPUs, like binary arithmetic operations, memory loads and stores, processing syscalls etc.
+As we can see ESIL uses a stack-based interpreter similar to what is commonly used for calculators. You have two categories of inputs: values and operators. A value simply gets pushed on the stack, an operator then pops values (its arguments if you will) off the stack, performs its operation and pushes its results (if any) back on. We can think of ESIL as a post-fix notation of the operations we want to do.
+
+So let's see an example:
+```
+4,esp,-=,ebp,esp,=[4]
+```
+Can you guess what this is? If we take this post-fix notation and transform it back to in-fix we get
+```
+esp -= 4
+4bytes(dword) [esp] = ebp
+```
+We can see that this corresponds to the x86 instruction ```push ebp```! Isn't that cool?
+The aim is to be able to express most of the common operations performed by CPUs, like binary arithmetic operations, memory loads and stores, processing syscalls etc. This way if we can transform the instructions to ESIL we can see what a program does while it is running even for the most cryptic architectures you definitely don't have a device to debug on for.
 
 ## Use ESIL
 
-   Using visual mode its great to inspect the esil evaluations.
+   Using visual mode is great to inspect the esil evaluations.
 
-   To do this only its needed set the next environment variable: "asm.emu". Ex:
-
+   There are 2 environment variables that are important for watching what a program does:
    ```
    [0x00000000]> e asm.emu = true
+   [0x00000000]> e asm.emustr = true
    ```
-
-   With this variable enabled, in visual mode you can see each register associated to current esil expression.
-
-   Another useful variable its "asm.esil"
-
+   
+   "asm.emu" tells r2 if you want ESIL information to be displayed. If it is set to true you will see comments appear to the right of your disassembly that tell you how the contents of registers and memory addresses are changed by the current instruction. For example if you have an instruction that subtracts a value from a register it tells you what the value was before and what it becomes after. This is super useful so you don't have to sit there yourself and track which value goes where. 
+   
+   One problem with this is that it is a lot of information to take in at once and sometimes you simply don't need it. r2 has a nice compromise for this. That is what the "asm.emustr" variable is for. Instead of this super verbose output with every register value, this only adds really useful information to the output, e.g., strings that are found at addresses a program uses or whether a jump is likely to be taken or not.
+   
+   The third important variable is "asm.esil". This switches your disassembly to no longer show you the actual disassembled instructions, but instead now shows you corresponding ESIL expressions that describe what the instruction does.
+So if you want to take a look at how instructions are expressed in ESIL simply set "asm.esil" to true.
    ```
    [0x00000000]> e asm.esil = true
    ```
-
-   It can also be toggled using `O` shortcut within the visual mode.
+   In visual mode you can also toggle this by simply typing `O`.
 
 ## ESIL Commands
    * "ae" : Evaluate ESIL expression.
@@ -79,23 +92,23 @@ Here is the complete instruction set used by the ESIL VM:
 ESIL Opcode | Operands | Name | Operation| example
 --- | --- | --- | --- | ----------------------------------------------
 TRAP  | src | Trap | Trap signal |
-**$** | src | Syscall | sysccall  |
+**$** | src | Syscall | syscall  |
 **$$** | src | Instruction address | Get address of current instruction<br>stack=instruction address |
-**==** | src,dst | Compare | stack = (dst == src) ; update_eflags(dst - src) |   
-**<** | src,dst | Smaller (signed comparison) | stack = (dst < src) ; update_eflags(dst - src) | [0x0000000]> "ae 1,5,<" <br>0x0<br>[0x00000000]> "ae 5,5"<br>0x0"
-**<=** | src,dst | Smaller or Equal (signed comparison) | stack = (dst <= src) ; update_eflags(dst - src) | [0x0000000]> "ae 1,5,<" <br>0x0<br>[0x00000000]> "ae 5,5"<br>0x1"   
-**>** | src,dst | Bigger (signed comparison) | stack = (dst > src) ; update_eflags(dst - src) | [0x00000000]> "ae 1,5,>"<br>0x1<br>[0x00000000]> "ae 5,5,>"<br>0x0
- **>=** | src,dst | Bigger or Equal (signed comparison) | stack = (dst >= src) ; update_eflags(dst - src) | [0x00000000]> "ae 1,5,>="<br>0x1<br>[0x00000000]> "ae 5,5,>="<br>0x1
+**==** | src,dst | Compare | stack = (dst == src) ; <br> update_eflags(dst - src) |   
+**<** | src,dst | Smaller (signed comparison) | stack = (dst < src) ; <br> update_eflags(dst - src) | [0x0000000]> "ae 1,5,<" <br>0x0<br>[0x00000000]> "ae 5,5"<br>0x0"
+**<=** | src,dst | Smaller or Equal (signed comparison) | stack = (dst <= src) ; <br> update_eflags(dst - src) | [0x0000000]> "ae 1,5,<" <br>0x0<br>[0x00000000]> "ae 5,5"<br>0x1"   
+**>** | src,dst | Bigger (signed comparison) | stack = (dst > src) ; <br> update_eflags(dst - src) | [0x00000000]> "ae 1,5,>"<br>0x1<br>[0x00000000]> "ae 5,5,>"<br>0x0
+ **>=** | src,dst | Bigger or Equal (signed comparison) | stack = (dst >= src) ; <br> update_eflags(dst - src) | [0x00000000]> "ae 1,5,>="<br>0x1<br>[0x00000000]> "ae 5,5,>="<br>0x1
  **<<** | src,dst | Shift Left | stack = dst << src | [0x00000000]> "ae 1,1,<<"<br>0x2<br>[0x00000000]> "ae 2,1,<<"<br>0x4
  **>>** | src,dst | Shift Right | stack = dst >> src | [0x00000000]> "ae 1,4,>>"<br>0x2<br>[0x00000000]> "ae 2,4,>>"<br>0x1
  **<<<** | src,dst | Rotate Left | stack=dst ROL src | [0x00000000]> "ae 31,1,<<<"<br>0x80000000<br>[0x00000000]> "ae 32,1,<<<"<br>0x1
 **>>>** | src,dst | Rotate Right | stack=dst ROR src | [0x00000000]> "ae 1,1,>>>"<br>0x80000000<br>[0x00000000]> "ae 32,1,>>>"<br>0x1
 **&** | src,dst | AND | stack = dst & src | [0x00000000]> "ae 1,1,&"<br>0x1<br>[0x00000000]> "ae 1,0,&"<br>0x0<br>[0x00000000]>  "ae 0,1,&"<br>0x0<br>[0x00000000]> "ae 0,0,&"<br>0x0
-**`|`** | src,dst | OR | stack = dst `|` src | [0x00000000]> "ae 1,1,`|`"<br>0x1<br>[0x00000000]> "ae 1,0,`|`"<br>0x1<br>[0x00000000]> "ae 0,1,`|`"<br>0x1<br>[0x00000000]> "ae 0,0,`|`"<br>0x0
+**&#x7c;** | src,dst | OR | stack = dst &#x7c; src | [0x00000000]> "ae 1,1,&#x7c;"<br>0x1<br>[0x00000000]> "ae 1,0,&#x7c;"<br>0x1<br>[0x00000000]> "ae 0,1,&#x7c;"<br>0x1<br>[0x00000000]> "ae 0,0,&#x7c;"<br>0x0
 **^** | src,dst | XOR | stack = dst ^src  | [0x00000000]> "ae 1,1,^"<br>0x0<br>[0x00000000]> "ae 1,0,^"<br>0x1<br>[0x00000000]> "ae 0,1,^"<br>0x1<br>[0x00000000]> "ae 0,0,^"<br>0x0
 **+** | src,dst | ADD | stack = dst + src | [0x00000000]> "ae 3,4,+"<br>0x7<br>[0x00000000]> "ae 5,5,+"<br>0xa
 **-** | src,dst | SUB | stack = dst - src | [0x00000000]> "ae 3,4,-"<br>0x1<br>[0x00000000]> "ae 5,5,-"<br>0x0<br>[0x00000000]> "ae 4,3,-"<br>0xffffffffffffffff
-**`*`** | src,dst | MUL | stack = dst * src | [0x00000000]> "ae 3,4,`*`"<br>0xc<br>[0x00000000]> "ae 5,5,`*`"<br>0x19
+**\*** | src,dst | MUL | stack = dst * src | [0x00000000]> "ae 3,4,\*"<br>0xc<br>[0x00000000]> "ae 5,5,\*"<br>0x19
 **/** | src,dst | DIV | stack = dst / src  | [0x00000000]> "ae 2,4,/"<br>0x2<br>[0x00000000]> "ae 5,5,/"<br>0x1<br>[0x00000000]> "ae 5,9,/"<br>0x1
 **%** | src,dst | MOD | stack = dst % src | [0x00000000]> "ae 2,4,%"<br>0x0<br>[0x00000000]> "ae 5,5,%"<br>0x0<br>[0x00000000]> "ae 5,9,%"<br>0x4
 **!** | src | NEG | stack = !!!src | [0x00000000]> "ae 1,!"<br>0x0<br>[0x00000000]> "ae 4,!"<br>0x0<br>[0x00000000]> "ae 0,!"<br>0x1<br>
@@ -103,30 +116,30 @@ TRAP  | src | Trap | Trap signal |
 **--** | src | DEC | stack = src-- | [0x00000000]> ar r_00=5;ar r_00<br>0x00000005<br>[0x00000000]> "ae r_00,--"<br>0x4<br>[0x00000000]> ar r_00<br>0x00000005<br>[0x00000000]> "ae 5,--"<br>0x4
 **+=** | src,reg | ADD eq | reg = reg + src | [0x00000000]> ar r_01=5;ar r_00=0;ar r_00<br>0x00000000<br>[0x00000000]> "ae r_01,r_00,+="<br>[0x00000000]> ar r_00<br>0x00000005<br>[0x00000000]> "ae 5,r_00,+="<br>[0x00000000]> ar r_00<br>0x0000000a
 **-=** | src,reg | SUB eq | reg = reg - src | [0x00000000]> "ae r_01,r_00,-="<br>[0x00000000]> ar r_00<br>0x00000004<br>[0x00000000]> "ae 3,r_00,-="<br>[0x00000000]> ar r_00<br>0x00000001
-**`*=`** | src,reg | MUL eq | reg = reg * src | [0x00000000]> ar r_01=3;ar r_00=5;ar r_00<br>0x00000005<br>[0x00000000]> "ae r_01,r_00,`*`="<br>[0x00000000]> ar r_00<br>0x0000000f<br>[0x00000000]> "ae 2,r_00,`*`="<br>[0x00000000]> ar r_00<br>0x0000001e
+**\*=** | src,reg | MUL eq | reg = reg * src | [0x00000000]> ar r_01=3;ar r_00=5;ar r_00<br>0x00000005<br>[0x00000000]> "ae r_01,r_00,\*="<br>[0x00000000]> ar r_00<br>0x0000000f<br>[0x00000000]> "ae 2,r_00,\*="<br>[0x00000000]> ar r_00<br>0x0000001e
  **/=** | src,reg | DIV eq | reg = reg / src | [0x00000000]> ar r_01=3;ar r_00=6;ar r_00<br>0x00000006<br>[0x00000000]> "ae r_01,r_00,/="<br>[0x00000000]> ar r_00<br>0x00000002<br>[0x00000000]> "ae 1,r_00,/="<br>[0x00000000]> ar r_00<br>0x00000002
  **%=** | src,reg | MOD eq | reg = reg % src | [0x00000000]>  ar r_01=3;ar r_00=7;ar r_00<br> 0x00000007<br> [0x00000000]> "ae r_01,r_00,%="<br> [0x00000000]> ar r_00<br> 0x00000001<br> [0x00000000]>  ar r_00=9;ar r_00<br> 0x00000009<br> [0x00000000]> "ae 5,r_00,%="<br> [0x00000000]> ar r_00<br> 0x00000004
 **<<=** | src,reg | Shift Left eq | reg = reg << src | [0x00000000]> ar r_00=1;ar r_01=1;ar r_01<br>0x00000001<br>[0x00000000]> "ae r_00,r_01,<<="<br>[0x00000000]> ar r_01<br>0x00000002<br>[0x00000000]> "ae 2,r_01,<<="<br>[0x00000000]> ar r_01<br>0x00000008
 **>>=** | src,reg | Shift Right eq | reg = reg << src | [0x00000000]> ar r_00=1;ar r_01=8;ar r_01<br>0x00000008<br>[0x00000000]> "ae r_00,r_01,>>="<br>[0x00000000]> ar r_01<br>0x00000004<br>[0x00000000]> "ae 2,r_01,>>="<br>[0x00000000]> ar r_01<br>0x00000001
 **&=** | src,reg |  AND eq | reg = reg & src | [0x00000000]> ar r_00=2;ar r_01=6;ar r_01<br>0x00000006<br>[0x00000000]> "ae r_00,r_01,&="<br>[0x00000000]> ar r_01<br>0x00000002<br>[0x00000000]> "ae 2,r_01,&="<br>[0x00000000]> ar r_01<br>0x00000002<br>[0x00000000]> "ae 1,r_01,&="<br>[0x00000000]> ar r_01<br>0x00000000
-**`|`=** | src,reg | OR eq| reg = reg `|` src | [0x00000000]> ar r_00=2;ar r_01=1;ar r_01<br>0x00000001<br>[0x00000000]> "ae r_00,r_01,|="<br>[0x00000000]> ar r_01<br>0x00000003<br>[0x00000000]> "ae 4,r_01,|="<br>[0x00000000]> ar r_01<br>0x00000007
+**&#x7c;=** | src,reg | OR eq| reg = reg &#x7c; src | [0x00000000]> ar r_00=2;ar r_01=1;ar r_01<br>0x00000001<br>[0x00000000]> "ae r_00,r_01,&#x7c;="<br>[0x00000000]> ar r_01<br>0x00000003<br>[0x00000000]> "ae 4,r_01,&#x7c;="<br>[0x00000000]> ar r_01<br>0x00000007
  **^=** | src,reg | XOR eq | reg = reg ^ src | [0x00000000]> ar r_00=2;ar r_01=0xab;ar r_01<br>0x000000ab<br>[0x00000000]> "ae r_00,r_01,^="<br>[0x00000000]> ar r_01<br>0x000000a9<br>[0x00000000]> "ae 2,r_01,^="<br>[0x00000000]> ar r_01<br>0x000000ab
 **++=** | reg | INC eq | reg = reg + 1 | [0x00000000]> ar r_00=4;ar r_00<br>0x00000004<br>[0x00000000]> "ae r_00,++="<br>[0x00000000]> ar r_00<br>0x00000005
 **--=** | reg | DEC eq | reg = reg - 1 | [0x00000000]> ar r_00=4;ar r_00<br>0x00000004<br>[0x00000000]> "ae r_00,--="<br>[0x00000000]> ar r_00<br>0x00000003
 **!=** | reg | NOT eq | reg = !reg | [0x00000000]> ar r_00=4;ar r_00<br>0x00000004<br>[0x00000000]> "ae r_00,!="<br>[0x00000000]> ar r_00<br>0x00000000<br>[0x00000000]> "ae r_00,!="<br>[0x00000000]> ar r_00<br>0x00000001
 --- | --- | --- | --- | ----------------------------------------------
-=[]<br>=[*]<br>=[1]<br>=[2]<br>=[4]<br>=[8] | src,dst | poke |*dst=src | [0x00010000]> "ae 0xdeadbeef,0x10000,=[4],"<br>[0x00010000]> pxw 4@0x10000<br>0x00010000  0xdeadbeef                                ....<br>[0x00010000]> "ae 0x0,0x10000,=[4],"<br>[0x00010000]> pxw 4@0x10000<br>0x00010000  0x00000000                  
-[]<br>[*]<br>[1]<br>[2]<br>[4]<br>[8] | src | peek | stack=*src | [0x00010000]> w test@0x10000<br>[0x00010000]> "ae 0x10000,[4],"<br>0x74736574<br>[0x00010000]> ar r_00=0x10000<br>[0x00010000]> "ae r_00,[4],"<br>0x74736574
-`|`=[]<br>`|`=[1]<br>`|`=[2]<br>`|`=[4]<br>`|`=[8] | reg | nombre | code | [0x00000000]> <br>[0x00000000]>
+=[]<br>=[\*]<br>=[1]<br>=[2]<br>=[4]<br>=[8] | src,dst | poke |\*dst=src | [0x00010000]> "ae 0xdeadbeef,0x10000,=[4],"<br>[0x00010000]> pxw 4@0x10000<br>0x00010000  0xdeadbeef                                ....<br>[0x00010000]> "ae 0x0,0x10000,=[4],"<br>[0x00010000]> pxw 4@0x10000<br>0x00010000  0x00000000                  
+[]<br>[\*]<br>[1]<br>[2]<br>[4]<br>[8] | src | peek | stack=\*src | [0x00010000]> w test@0x10000<br>[0x00010000]> "ae 0x10000,[4],"<br>0x74736574<br>[0x00010000]> ar r_00=0x10000<br>[0x00010000]> "ae r_00,[4],"<br>0x74736574
+&#x7c;=[]<br>&#x7c;=[1]<br>&#x7c;=[2]<br>&#x7c;=[4]<br>&#x7c;=[8] | reg | nombre | code | [0x00000000]> <br>[0x00000000]>
 SWAP |  | Swap | Swap two top elements | SWAP
-PICK | n | Pick | Pick nth element from the top of the stack | 2,PICK
-RPICK | m | Reverse Pick | Pick nth element from the base of the stack | 0,RPICK
+PICK | n | Pick | Pick nth element<br> from the top of the stack | 2,PICK
+RPICK | m | Reverse Pick | Pick nth element<br> from the base of the stack | 0,RPICK
 DUP | | Duplicate | Duplicate top element in stack | DUP
-NUM | | Numeric | If top element is a reference (register name, label, etc), dereference it and push its real value | NUM
+NUM | | Numeric | If top element is a reference <br> (register name, label, etc),<br> dereference it and push its real value | NUM
 CLEAR | | Clear | Clear stack | CLEAR
 BREAK | | Break | Stops ESIL emulation | BREAK
 GOTO | n | Goto | Jumps to Nth ESIL word | GOTO 5
-TODO | | To Do | Stops execution (reason: ESIL expression not completed) | TODO
+TODO | | To Do | Stops execution<br> (reason: ESIL expression not completed) | TODO
 
 ### ESIL Flags
 
@@ -138,8 +151,13 @@ Internal flags are prefixed with `$` character.
 z      - zero flag, only set if the result of an operation is 0
 b      - borrow, this requires to specify from which bit (example: $b4 - checks if borrow from bit 4)
 c      - carry, same like above (example: $c7 - checks if carry from bit 7)
+o      - overflow
 p      - parity
 r      - regsize ( asm.bits/8 )
+s      - sign
+ds     - delay slot state
+jt     - jump target
+js     - jump target set
 [0-9]* - Used to set flags and registers without having any side effects,
          i.e. setting esil_cur, esil_old and esil_lastsz.
          (example: "$0,of,=" to reset the overflow flag)
@@ -351,19 +369,26 @@ We need a way to retrieve the numeric value of 'rip'. This is a very simple exam
 
 ### API HOOKS
 
-It is important for emulation to be able to setup hooks in parser, so we can extend it to implement analysis without having to change parser again and again. That is, every time an operation is about to be executed, a user hook is called. It can be used to determine if rip is going to change, or if the instruction updates stack, etc.
+It is important for emulation to be able to setup hooks in parser, so we can extend it to implement analysis without having to change parser again and again. That is, every time an operation is about to be executed, a user hook is called. It can be used to determine if `RIP` is going to change, or if the instruction updates stack, etc.
 Later, we can split that callback into several ones to have an event-based analysis API that may be extended in js like this:
+
+```
 esil.on('regset', function(){..
 esil.on('syscall', function(){esil.regset('rip'
+```
 
-For the API, see functions hook_flag_read(), hook_execute(), hook_mem_read(). A callback should return true if you want to override the action taken for a callback. For example, to deny memory reads in a region, or voiding memory writes, effectively making it read-only.
+For the API, see functions `hook_flag_read()`, `hook_execute()`, `hook_mem_read()`. A callback should return true if you want to override the action taken for a callback. For example, to deny memory reads in a region, or voiding memory writes, effectively making it read-only.
 Return false or 0 if you want to trace ESIL expression parsing.
 
-Other operations that require bindings to external functionalities to work. In this case, r_ref and r_io. This must be defined when initializing the esil vm.
+Other operations that require bindings to external functionalities to work. In this case, `r_ref` and `r_io`. This must be defined when initializing the esil vm.
 
 * Io Get/Set
-    Out ax, 44
-    44,ax,:ou
+  ```
+  Out ax, 44
+  44,ax,:ou
+  ```
 * Selectors (cs,ds,gs...)
-   Mov eax, ds:[ebp+8]
-   Ebp,8,+,:ds,eax,=
+  ```
+  Mov eax, ds:[ebp+8]
+  Ebp,8,+,:ds,eax,=
+  ```

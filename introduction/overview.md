@@ -14,7 +14,7 @@ A program to extract information from executable binaries, such as ELF, PE, Java
 
 ### rasm2
 
-A command line assembler and disassembler for multiple architectures (including Intel x86 and x86-64, MIPS, ARM, PowerPC, Java, and MSIL).
+A command line assembler and disassembler for multiple architectures (including Intel x86 and x86-64, MIPS, ARM, PowerPC and Java).
 
 #### Examples
 
@@ -108,11 +108,20 @@ A launcher for running programs within different environments, with different ar
 
 #### Debugging a Program by Redirecting IO to Another Terminal
 
-1. open a new terminal and type 'tty' to get a terminal name:
-       $ tty ; clear ; sleep 999999
-       /dev/ttyS010
-2. In another terminal, run `r2`:
-        $ r2 -d rarun2 program=/bin/ls stdio=/dev/ttys010
+1 - open a new terminal and type 'tty' to get a terminal name:
+
+```
+$ tty ; clear ; sleep 999999
+/dev/ttyS010
+```
+
+2 - Create a new file containing the following rarun2 profile named foo.rr2:
+```
+#!/usr/bin/rarun2
+program=/bin/ls 
+stdio=/dev/ttys010
+```
+3 - Launch the following radare2 command: r2 -R foo.rr2 -d ls
 
 ### rax2
 

@@ -21,13 +21,12 @@ Supported arithmetic operations are:
  *   \> : shift right
  *   < : shift left
 
-Binary operations should be escaped:
+Use of logical OR should be escaped using quotes, or it will be mistaken for a pipe opeator:
 
- *   \| : logical OR // ("? 0001010b | 0101001b ")
- *   & : logical AND
- *   ^ : logical XOR
+    [0x00000000]> "? 1 | 2"
+    3 0x3 03 3 0000:0003 3 "\x03" 00000011 2.0 2.000000f 2.000000
 
-Values are numbers can be displayed in several formats:
+Numbers can be displayed in several formats:
 
     0x033   : hexadecimal can be displayed
     3334    : decimal
@@ -48,9 +47,9 @@ You can also use variables and seek positions to build complex expressions. Avai
 
 Some more examples:
 
-    [0x4A13B8C0]> :? $m + $l
+    [0x4A13B8C0]> ? $m + $l
     140293837812900 0x7f98b45df4a4 03771426427372244 130658.0G 8b45d000:04a4 140293837812900 10100100 140293837812900.0 -0.000000
 
 
-    [0x4A13B8C0]> :pd 1 @ +$l
+    [0x4A13B8C0]> pd 1 @ +$l
     0x4A13B8C2   call 0x4a13c000
